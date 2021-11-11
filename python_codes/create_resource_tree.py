@@ -8,9 +8,9 @@ cse = "/~/in-cse/in-name/"
 # Fill code here to create AE
 # specified by the URI
 # ------------------------------------------
-ae = "Test-1"
+ae = "Team-11"
 lbl_ae = ["AE-Label-1", "AE-Label-2"]
-create_ae(server+cse, ae, lbl_ae)
+# create_ae(server+cse, ae, lbl_ae)
 # ------------------------------------------
 
 
@@ -18,9 +18,13 @@ create_ae(server+cse, ae, lbl_ae)
 # Fill code here to create container in the AE
 # specified by the URI
 # ------------------------------------------
+container_name = "Node-1"
+lbl_cnt = ["CNT-Label-1", "CNT-Label-2"]
+# create_cnt(server+cse+ae, container_name, lbl_cnt)
+
 container_name = "Data"
 lbl_cnt = ["CNT-Label-1", "CNT-Label-2"]
-create_cnt(server+cse+ae, container_name, lbl_cnt)
+create_cnt(server+cse+ae+"Node-1", container_name, lbl_cnt)
 # ------------------------------------------
 
 
@@ -30,6 +34,6 @@ create_cnt(server+cse+ae, container_name, lbl_cnt)
 # ------------------------------------------
 content_instance = 0
 lbl_cin = ["CIN-Label-1", "CIN-Label-2"]
-create_data_cin(server+cse+ae+"/"+container_name, content_instance, lbl_cin)
+# create_data_cin(server+cse+ae+"/"+container_name, content_instance, lbl_cin)
 # ------------------------------------------
 
