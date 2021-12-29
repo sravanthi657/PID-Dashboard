@@ -1,6 +1,6 @@
 from oneM2M_functions import *
 
-server = "http://127.0.0.1:8080"
+server = "https://esw-onem2m.iiit.ac.in"
 cse = "/~/in-cse/in-name/"
 ae = "Test-1"
 container_name = "Data"

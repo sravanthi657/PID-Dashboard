@@ -4,34 +4,50 @@
 //#include <Arduino.h>
 ///#include <HTTPClient.h>
 #include <time.h>
-#include <SoftwareSerial.h>
-#include "WiFi.h"
+#include <WiFiClientSecure.h>
+
+
 uint32_t delayMS;
-
-  // ############################################################### //
-  // ######### COMMON CODE (CSE) FOR ALL SENSORS  ######### //
-  // ###############################################################  //
-
   
 // ##################### Update the Wifi SSID, Password and IP adress of the server ##########
 // WIFI params
 char* WIFI_SSID = "Mahitha";
 char* WIFI_PSWD = "mahi151619";
 
-//SERVER IP ADDRESS
-//For Local host: 1) If you are using Windows OS then use command "ipconfig" in Command Prompt to find IPV4 address and use that. 
-//                2) If you are using Linux OS then use command "ifconfig" in terminal to find IPV4 address and use that. 
-String CSE_IP  = "192.168.0.159";  
-char CSE_IP_1[] = "192.168.0.159";
-// ######################################################
+
+const char*  server = "esw-onem2m.iiit.ac.in";  // Server URL
+
+const char* test_root_ca= \
+"-----BEGIN CERTIFICATE-----\n" \
+"MIIDdTCCAl2gAwIBAgILBAAAAAABFUtaw5QwDQYJKoZIhvcNAQEFBQAwVzELMAkG\n" \ 
+"A1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExEDAOBgNVBAsTB1Jv\n" \
+"b3QgQ0ExGzAZBgNVBAMTEkdsb2JhbFNpZ24gUm9vdCBDQTAeFw05ODA5MDExMjAw\n" \
+"MDBaFw0yODAxMjgxMjAwMDBaMFcxCzAJBgNVBAYTAkJFMRkwFwYDVQQKExBHbG9i\n" \ 
+"YWxTaWduIG52LXNhMRAwDgYDVQQLEwdSb290IENBMRswGQYDVQQDExJHbG9iYWxT\n" \
+"aWduIFJvb3QgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDaDuaZ\n" \
+"jc6j40+Kfvvxi4Mla+pIH/EqsLmVEQS98GPR4mdmzxzdzxtIK+6NiY6arymAZavp\n" \
+"xy0Sy6scTHAHoT0KMM0VjU/43dSMUBUc71DuxC73/OlS8pF94G3VNTCOXkNz8kHp\n" \
+"1Wrjsok6Vjk4bwY8iGlbKk3Fp1S4bInMm/k8yuX9ifUSPJJ4ltbcdG6TRGHRjcdG\n" \
+"snUOhugZitVtbNV4FpWi6cgKOOvyJBNPc1STE4U6G7weNLWLBYy5d4ux2x8gkasJ\n" \
+"U26Qzns3dLlwR5EiUWMWea6xrkEmCMgZK9FGqkjWZCrXgzT/LCrBbBlDSgeF59N8\n" \
+"9iFo7+ryUp9/k5DPAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8E\n" \
+"BTADAQH/MB0GA1UdDgQWBBRge2YaRQ2XyolQL30EzTSo//z9SzANBgkqhkiG9w0B\n" \
+"AQUFAAOCAQEA1nPnfE920I2/7LqivjTFKDK1fPxsnCwrvQmeU79rXqoRSLblCKOz\n" \
+"yj1hTdNGCbM+w6DjY1Ub8rrvrTnhQ7k4o+YviiY776BQVvnGCv04zcQLcFGUl5gE\n" \
+"38NflNUVyRRBnMRddWQVDf9VMOyGj/8N7yy5Y0b2qvzfvGn9LhJIZJrglfCm7ymP\n" \
+"AbEVtQwdpf5pLGkkeB6zpxxxYu7KyJesF12KwvhHhm4qxFYxldBniYUr+WymXUad\n" \
+"DKqC5JlR3XC321Y9YeRq4VzW9v493kHMB65jUr9TU/Qr6cf9tveCX4XSQRjbgbME\n" \
+"HMUfpIBvFSDJ3gyICh3WZlXi/EjJKSZp4A==\n" \
+"-----END CERTIFICATE-----\n";
+
+WiFiClientSecure client;
 
 int WIFI_DELAY  = 100; //ms
 DynamicJsonDocument doc(1024);
 
 // oneM2M : CSE params
-int CSE_HTTP_PORT = 8080;
-String CSE_NAME = "in-name";
-String CSE_M2M_ORIGIN = "admin:admin";
+
+String CSE_M2M_ORIGIN = "3S2qIgRYgA:XyRZnyl7cp";
 
 // oneM2M : resources' params
 int TY_AE  = 2;
@@ -39,10 +55,7 @@ int TY_CNT = 3;
 int TY_CI  = 4;
 int TY_SUB = 23;
 
-// HTTP constants
-int LOCAL_PORT = 9999;
-char* HTTP_CREATED = "HTTP/1.1 201 Created";
-char* HTTP_OK    = "HTTP/1.1 200 OK\r\n";
+//// HTTP constants
 int REQUEST_TIME_OUT = 5000; //ms
 
 
@@ -56,8 +69,8 @@ String json_out="";
 
 
 // Global variables
-WiFiServer server(LOCAL_PORT);    // HTTP Server (over WiFi). Binded to listen on LOCAL_PORT contant
-WiFiClient client;
+//WiFiServer server(LOCAL_PORT);    // HTTP Server (over WiFi). Binded to listen on LOCAL_PORT contant
+//WiFiClient client;
 
 // Method for creating an HTTP POST with preconfigured oneM2M headers
 // param : url  --> the url path of the targted oneM2M resource on the remote CSE
@@ -65,48 +78,46 @@ WiFiClient client;
 // param : rep  --> the representaton of the resource in JSON format
 
 
-String doGET(String url, int ty) {
+String doGET(String url) {
 
-  String getRequest = String() + "GET " + url + " HTTP/1.1\r\n" +
-                      "Host: " + CSE_IP + ":" + CSE_HTTP_PORT + "\r\n" +
-                      "X-M2M-Origin: " + CSE_M2M_ORIGIN + "\r\n" +
-                      "Content-Type: application/json;ty=" + ty + "\r\n" +
-                      "Connection: close\r\n\n";
   // Connect to the CSE address
+client.setCACert(test_root_ca);
 
-  Serial.println("GET connecting to " + CSE_IP + ":" + CSE_HTTP_PORT + " ...");
-  // Get a client
-  WiFiClient client;
-  if (!client.connect(CSE_IP_1, CSE_HTTP_PORT)) {
-    Serial.println("Connection failed !");
+  Serial.println("\nStarting connection to server...");
+  
+  if (!client.connect(server, 443))
+  {
+    Serial.println("Connection failed!");
     return "error";
   }
+  else {
+    Serial.println("Connected to server!");
+    String request = String() + "GET " + url + " HTTP/1.1\r\n" +
+                      "Host: " + server + "\r\n" +
+                      "X-M2M-Origin: " + CSE_M2M_ORIGIN + "\r\n" +
+                      "Content-Type: application/json" + "\r\n" +
+                      "Connection: close\r\n\n";
+    // Make a HTTP request:
+    client.println(request);
 
-  // Send the HTTP POST request
-  client.print(getRequest);
-
-  // Manage a timeout
-  unsigned long startTime = millis();
-  while (client.available() == 0) {
-    if (millis() - startTime > REQUEST_TIME_OUT) {
-      Serial.println("Client Timeout");
-      client.stop();
-      return "error";
+    while (client.connected()) {
+      String line = client.readStringUntil('\n');
+      if (line == "\r") {
+        Serial.println("headers received");
+        break;
+      }
     }
-  }
-  // If success, Read the HTTP response
-  String result = "";
-  if (client.available()) {
-    result = client.readStringUntil('\r');
-//    Serial.println(result);
-  }
-  int flag=0;
-  json_out="";
-  while (client.available()) {
-    String line = client.readString();
-//    Serial.println(line);
-    json_out=line.substring(line.indexOf('{'),line.indexOf('}')+1);
-  }
+    json_out = "";
+    while (client.available()) {
+       json_out = client.readString();
+      Serial.println(json_out);
+          json_out=json_out.substring(json_out.indexOf('{'),json_out.indexOf('}')+1);
+
+      
+    }
+
+  client.stop();
+  delay(5000);  //POST Data at every 20 seconds
   Serial.println();
   Serial.println("closing connection...");
   Serial.println(json_out);
@@ -117,71 +128,62 @@ String doGET(String url, int ty) {
   Serial.println("in function vol: ");
   Serial.println(vol);
   return vol;
+  }
+    
+
 }
 
 
 
 String doPOST(String url, int ty, String rep) {
+ client.setCACert(test_root_ca);
 
-  String postRequest = String() + "POST " + url + " HTTP/1.1\r\n" +
-                       "Host: " + CSE_IP + ":" + CSE_HTTP_PORT + "\r\n" +
-                       "X-M2M-Origin: " + CSE_M2M_ORIGIN + "\r\n" +
-                       "Content-Type: application/json;ty=" + ty + "\r\n" +
-                       "Content-Length: " + rep.length() + "\r\n"
-                       "Connection: close\r\n\n" +
-                       rep;
+  Serial.println("\nStarting connection to server...");
+  
+  //POST Data
+  
+  const char* origin   = "3S2qIgRYgA:XyRZnyl7cp";
+  if (!client.connect(server, 443))
+    Serial.println("Connection failed!");
+  else {
+    Serial.println("Connected to server!");
+    String request = String()+ "POST " + url + " HTTP/1.1\r\n" +
+               "Host: " + server + "\r\n" +
+               "X-M2M-Origin:" +  CSE_M2M_ORIGIN + "\r\n" +
+               "Content-Type:application/json;ty="+ ty +"\r\n" +
+               "Content-Length: "+ rep.length()+"\r\n" +
+               "Connection: close\r\n\n" + 
+               rep;
+    // Make a HTTP request:
+    client.println(request);
 
-  // Connect to the CSE address
-
- Serial.println("connecting to " + CSE_IP + ":" + CSE_HTTP_PORT + " ...");
-  // Get a client
-  WiFiClient client;
-    if (!client.connect(CSE_IP_1, CSE_HTTP_PORT)) {
-    Serial.println("Connection failed !");
-    return "error";
-  }
-  // if connection succeeds, we show the request to be send
-#ifdef DEBUG
-  Serial.println(postRequest);
-#endif
-
-  // Send the HTTP POST request
-  client.print(postRequest);
-
-  // Manage a timeout
-  unsigned long startTime = millis();
-  while (client.available() == 0) {
-    if (millis() - startTime > REQUEST_TIME_OUT) {
-      Serial.println("Client Timeout");
-      client.stop();
-      return "error";
+    while (client.connected()) {
+      String line = client.readStringUntil('\n');
+      if (line == "\r") {
+        Serial.println("headers received");
+        break;
+      }
     }
+    while (client.available()) {
+      char c = client.read();
+      Serial.write(c);
+    }
+
+    client.stop();
   }
-  // If success, Read the HTTP response
-  String result = "";
-  if (client.available()) {
-    result = client.readStringUntil('\r');
-    //    Serial.println(result);
-  }
-  while (client.available()) {
-    String line = client.readStringUntil('\r');
-    Serial.print(line);
-  }
-  Serial.println();
-  Serial.println("closing connection...");
-  return result;
+    delay(5000);
 }
 
 // Method for creating an ContentInstance(CI) resource on the remote CSE under a specific CNT (this is done by sending a POST request)
 // param : ae --> the targted AE name (should be unique under the remote CSE)
 // param : cnt  --> the targeted CNT name (should be unique under this AE)
 // param : ciContent --> the CI content (not the name, we don't give a name for ContentInstances)
-String createCI(String ae, String cnt1, String cnt2, String ciContent) {
+String createCI(String link, String ciContent) {
   String ciRepresentation =
     "{\"m2m:cin\": {"
     "\"con\":\"" + ciContent + "\""
     "}}";
-  return doPOST("/" + CSE_NAME + "/" + ae + "/" + cnt1 + "/"+cnt2+"/", TY_CI, ciRepresentation);
+  return doPOST(link, TY_CI, ciRepresentation);
 }
 
 void init_WiFi() {
@@ -197,17 +199,12 @@ void init_WiFi() {
   Serial.println("WiFi Connected ==> IP Address = " + WiFi.localIP().toString());
 }
 
-void init_HTTPServer() {
-  server.begin();
-  Serial.println("Local HTTP Server started !");
-}
 
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(SERIAL_SPEED);
   init_WiFi();// Connect to WiFi network
-  init_HTTPServer(); // Start HTTP server
   
 
 }
@@ -215,21 +212,16 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   ////// Storing as a string in a single containers///////
+    client.setCACert(test_root_ca);
+    String arr = {doGET("https://esw-onem2m.iiit.ac.in/~/in-cse/in-name/Team-5/Node-1/Parameters/la")};
+    Serial.println(arr);
+//    String sped=doGET("https://esw-onem2m.iiit.ac.in/~/in-cse/in-name/Team-5/Node-1/Input-rpm/la");
+//    Serial.println("Speed via get request");
+//    Serial.println(sped);
+//    String post_speed = "2255";
+//    Serial.println("posting "+post_speed+"rpm");
+//    createCI("https://esw-onem2m.iiit.ac.in/~/in-cse/in-name/Team-5/Node-1/Data/",post_speed);
 
-    String sped=doGET("/" + CSE_NAME + "/" + "Team-11" + "/" + "Node-1"+"/"+"Data/la", TY_CI);
-    Serial.println("Speed via get request");
-    Serial.println(sped);
-  
-    String sensor_value_string;
-    float spedd = random(0,2000);
-    Serial.print("Speed = ");
-    Serial.print(spedd); 
-    Serial.println(" rpm  ");
-
-    
-    sensor_value_string = String(spedd);
-    createCI("Team-11", "Node-1", "Data",sensor_value_string);
-  // Check if the data instance was created.
   delay(5000);
 
 
